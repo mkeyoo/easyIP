@@ -17,16 +17,16 @@ dns=$(printf "%s" "\\n" && cat /etc/resolv.conf | grep 'nameserver' | awk '{prin
 #--Define OS, and Declare FOR list of active interfaces
 if [ "$OS" == "Linux" ] ;then
 	
-	for each in $(ls -1 /sys/class/net) ;do
+	for int in $(ls -1 /sys/class/net) ;do
 
-		lanip=$(ifconfig $each | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1)
-                gateway=$(ip route show dev $each | grep default | cut -d' ' -f4)
-                mac=$(ifconfig $each | grep HWaddr | awk '{print $5}' | cut -c 1-17) 
+		lanip=$(ifconfig $int | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1)
+                gateway=$(ip route show dev $int | awk 'FNR == 1 {print}' | awk '{print$4}')
+                mac=$(ifconfig $int | grep HWaddr | awk '{print $5}' | cut -c 1-17) 
 
 
-               if [ ! -z "${gateway// }" ] ;then
+               if [ "$gateway" != "none" ] ;then
 
-                       	echo  "$each"
+                       	echo  "$int"
                         echo  "IP: $lanip"
                         echo  "Default Gateway: $gateway"
                         echo  "MAC: $mac"
@@ -38,16 +38,16 @@ if [ "$OS" == "Linux" ] ;then
 
 elif [ "$OS" == "Darwin" ] ;then
 	
-	for each in $(networksetup -listallhardwareports | grep "Device" | cut -d' ' -f2) ;do
+	for int in $(networksetup -listallhardwareports | grep "Device" | cut -d' ' -f2) ;do
  
-		result=$(ifconfig $each | grep -v inet6 | grep inet | cut -d' ' -f2)
-		gateway=$(netstat -nr -f inet | grep default | grep $each | awk '{print$2}')
-		mac=$(ifconfig $each | grep ether | awk '{print $2}'| cut -c 1-17)
-		state=$(ifconfig $each | grep status | awk '{print$2}')
+		lanip=$(ifconfig $int | grep -v inet6 | grep inet | cut -d' ' -f2)
+		gateway=$(netstat -nr -f inet | grep $int | awk 'FNR == 1 {print}' | awk '{print$2}')
+		mac=$(ifconfig $int | grep ether | awk '{print $2}'| cut -c 1-17)
+		state=$(ifconfig $int | grep status | awk '{print$2}')
 	
 		if [ "$state" == "active" ] ;then
         
-  			echo "$each"
+  			echo "$int"
 			echo "IP: $lanip"
 			echo "Default Gateway: $gateway"
 			echo "MAC: $mac"
@@ -56,7 +56,26 @@ elif [ "$OS" == "Darwin" ] ;then
 		fi
 	done	
 
-fi
+elif [ "$OS" == "FreeBSD" ] ;then
+	for int in $(ifconfig -l) ;do
 
+		lanip=$(ifconfig $int | grep inet | cut -d ':' -f2 | cut -d' ' -f2)
+		gateway=$(netstat -nr -f inet | grep $int | awk 'FNR == 1 {print}' | awk '{print$2}')
+		mac=$(ifconfig $int | grep hwaddr | cut -d' ' -f2)
+		state=$(ifconfig $int | grep status | awk '{print$2}')
+
+		if [ "$state" == "active" ] ;then
+			
+			echo "$int"
+                        echo "IP: $lanip"
+                        echo "Default Gateway: $gateway"
+                        echo "MAC: $mac"
+                        echo ""
+	
+		fi
+
+	done
+
+fi
 	echo -e "Name Servers": $dns | awk '!a[$0]++'
 

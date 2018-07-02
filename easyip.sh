@@ -38,7 +38,7 @@ if [ "$OS" == "Linux" ] ;then
 
 elif [ "$OS" == "Darwin" ] ;then
 	
-	for int in $(networksetup -listallhardwareports | grep "Device" | cut -d' ' -f2) ;do
+	for int in $(networksetup -listallhardwareports | awk '/Bluetooth/ {getline; next} {print}' | grep Device | cut -d' ' -f2) ;do
  
 		lanip=$(ifconfig $int | grep -v inet6 | grep inet | cut -d' ' -f2)
 		gateway=$(netstat -nr -f inet | grep $int | awk 'FNR == 1 {print}' | awk '{print$2}')
